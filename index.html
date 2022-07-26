@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      body {
+        height: 100vh;
+        justify-content: space-between;
+      }
+      #options {
+        flex-basis: 300px;
+        padding: 20px;
+        border-left: 1px solid #000;
+      }
+
+      #video_grid {
+        flex-grow: 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2%;
+        padding: 2%;
+        height: 100vh;
+        overflow: scroll;
+      }
+      video {
+        width: 45%;
+        height: 45vh;
+        object-fit: cover;
+      }
+    </style>
+    <script defer src="./app.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css"
+    />
+
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+
+  <body class="d-flex">
+    <div id="video_grid"></div>
+
+    <div id="options">
+      <p style="font-weight: bold" class="mb-1 mt-2">Controllers</p>
+
+      <button id="muteBtn" class="btn btn-primary">Mute yourself</button>
+      <button id="cameraoff" class="btn btn-primary">Turn off camera</button>
+      <p style="font-weight: bold" class="mb-1 mt-2">Change Camera</p>
+
+      <select
+        id="selectCam"
+        style="width: 300px; margin: auto"
+        class="form-select"
+        aria-label="Default select example"
+      ></select>
+
+      <p style="font-weight: bold" class="mb-1 mt-2">Change Mic</p>
+      <select
+        id="selectMic"
+        style="width: 300px; margin: auto"
+        class="form-select"
+        aria-label="Default select example"
+      ></select>
+
+      <p style="font-weight: bold" class="mb-1 mt-2">Share Your Screen</p>
+
+      <button id="screenShare" class="btn mt-2 btn-secondary">
+        Share your Screen
+      </button>
+    </div>
+
+    <script src="./socket.js"></script>
+  </body>
+</html>
