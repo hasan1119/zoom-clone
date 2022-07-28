@@ -31,7 +31,11 @@
         object-fit: cover;
       }
     </style>
-    <script defer src="./app.js"></script>
+
+    <script>
+      const roomId = "<%= roomId%>";
+    </script>
+
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css"
@@ -72,6 +76,7 @@
       </button>
     </div>
 
-    <script src="./socket.js"></script>
+    <script defer src="./app.js"></script>
+    <!-- <script src="./socket.js"></script> -->
   </body>
 </html>

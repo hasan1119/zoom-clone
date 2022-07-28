@@ -5,12 +5,14 @@ const selectCam = document.getElementById("selectCam")
 const selectMic = document.getElementById("selectMic")
 const screenShare = document.getElementById("screenShare")
 
-
+// socket init 
+const socket = io();
 
 let mediaStream;
 let mute = false;
 let camera = true;
 let currentCam;
+let RTC;
 
 // sound mute handler
 muteBtn.addEventListener("click", (e) => {
@@ -57,7 +59,7 @@ cameraoff.addEventListener('click', () => {
 
 // getting the medias
 async function getMedia(cameraId, micId) {
-    
+
 
     currentCam = cameraId === null ? currentCam : cameraId;
 
@@ -67,28 +69,36 @@ async function getMedia(cameraId, micId) {
     }
 
     const preferredCameraConstraints = {
-        video: { deviceId: cameraId  },
-        audio:true,
+        video: {
+            deviceId: cameraId
+        },
+        audio: true,
     }
 
-    const videoOption = currentCam ? { deviceId: currentCam } : true;
+    const videoOption = currentCam ? {
+        deviceId: currentCam
+    } : true;
 
     const preferredMicConstraints = {
         video: videoOption,
-        audio:{ deviceId: micId  },
+        audio: {
+            deviceId: micId
+        },
     }
-    console.log( currentCam, videoOption);
 
     try {
-      
-            
-        
-        mediaStream = await window.navigator.mediaDevices.getUserMedia(cameraId || micId ? cameraId? preferredCameraConstraints : preferredMicConstraints   : initialConstraits)
 
+
+        mediaStream = await window.navigator.mediaDevices.getUserMedia(cameraId || micId ? cameraId ? preferredCameraConstraints : preferredMicConstraints : initialConstraits)
+        // send joining notification
+      
         displayMedia()
         getAllCameras()
         getAllMics()
-       console.log( mediaStream.getAudioTracks());
+        makeWebRTCConnection();
+
+        // room joining event
+        socket.emit('joinRoom', roomId)
 
     } catch (error) {
         console.log(error);
@@ -99,7 +109,9 @@ async function getMedia(cameraId, micId) {
 getMedia()
 
 
-async function getScreenMedia(){
+
+
+async function getScreenMedia() {
     try {
         mediaStream = await navigator.mediaDevices.getDisplayMedia({
             audio: true,
@@ -117,42 +129,12 @@ screenShare.addEventListener('click', getScreenMedia)
 
 // display media
 function displayMedia() {
-    videoGrid.innerHTML = ''
     const video = document.createElement('video');
     video.srcObject = mediaStream;
     video.addEventListener('loadedmetadata', () => {
         video.play()
     })
     videoGrid.appendChild(video)
-
-    const video2 = document.createElement('video');
-    video2.srcObject = mediaStream;
-    video2.addEventListener('loadedmetadata', () => {
-        video2.play()
-    })
-    videoGrid.appendChild(video2)
-
-    const video3 = document.createElement('video');
-    video3.srcObject = mediaStream;
-    video3.addEventListener('loadedmetadata', () => {
-        video3.play()
-    })
-    videoGrid.appendChild(video3)
-
-    const video4 = document.createElement('video');
-    video4.srcObject = mediaStream;
-    video4.addEventListener('loadedmetadata', () => {
-        video4.play()
-    })
-    videoGrid.appendChild(video4)
-
-    const video5 = document.createElement('video');
-    video5.srcObject = mediaStream;
-    video5.addEventListener('loadedmetadata', () => {
-        video5.play()
-    })
-    videoGrid.appendChild(video5)
-
 
 }
 
@@ -162,12 +144,12 @@ async function getAllCameras() {
     const allDevices = await window.navigator.mediaDevices.enumerateDevices();
     selectCam.innerHTML = ''
     allDevices.forEach(device => {
-  
+
         if (device.kind === "videoinput") {
             const option = document.createElement('option');
             option.value = device.deviceId;
             option.textContent = device.label;
-            option.selected = device.label === currentCamera.label ? true: false ;
+            option.selected = device.label === currentCamera.label ? true : false;
             selectCam.appendChild(option)
         }
     })
@@ -182,12 +164,12 @@ async function getAllMics() {
     const allDevices = await window.navigator.mediaDevices.enumerateDevices();
     selectMic.innerHTML = ''
     allDevices.forEach(device => {
-  
+
         if (device.kind === "audioinput") {
             const option = document.createElement('option');
             option.value = device.deviceId;
             option.textContent = device.label;
-            option.selected = device.label === currentMic.label ? true: false ;
+            option.selected = device.label === currentMic.label ? true : false;
             selectMic.appendChild(option)
         }
     })
@@ -199,6 +181,7 @@ async function getAllMics() {
 selectCam.addEventListener('input', (e) => {
     const cameraId = e.target.value;
     getMedia(cameraId)
+
 })
 
 // select a specific camera
@@ -206,3 +189,105 @@ selectMic.addEventListener('input', (e) => {
     const micId = e.target.value;
     getMedia(null, micId)
 })
+
+
+
+
+
+
+
+/// socket
+
+socket.on("newJoining", () => {
+    makeAOffer()
+})
+
+
+// make WebRTC connection
+function makeWebRTCConnection() {
+    // rtc init
+    RTC = new RTCPeerConnection({
+        iceServers: [
+            {
+              urls: 'stun:stun1.l.google.com:19302'
+            },
+            {
+              urls: 'stun:stun3.l.google.com:19302'
+            },
+            {
+              urls: 'stun:stun4.l.google.com:19302'
+            }
+          ]
+    });
+
+    // add media tracks to RTC
+    mediaStream.getTracks()
+   .forEach(track => {
+      RTC.addTrack(track,mediaStream )
+  })
+
+    // send ICE candidate
+  RTC.addEventListener('icecandidate', (data) => {
+    socket.emit( "sendIceCandidate",data.candidate, roomId);
+  })
+
+        // send ICE candidate
+  RTC.addEventListener('addstream', (data) => {
+      const videoTag = document.createElement('video');
+      videoTag.srcObject = data.stream;
+      videoTag.addEventListener('loadedmetadata', () => {
+          videoTag.play()
+      })
+
+      videoGrid.appendChild(videoTag)
+  })
+    
+}
+
+
+
+// make a offer
+async function makeAOffer() {
+    const offer = await RTC.createOffer();
+    RTC.setLocalDescription(offer)
+    // send the offer 
+    socket.emit("sendTheOffer", offer, roomId)
+}
+
+// receive offer
+socket.on("receiveOffer", async (offer) => {
+    RTC.setRemoteDescription(offer);
+    const answer = await RTC.createAnswer();
+    RTC.setLocalDescription(answer);
+    
+    // send the answer
+    socket.emit("sendTheAnswer", answer, roomId)
+})
+
+
+// receive answer
+socket.on("receiveAnswer", (answer) => {
+    RTC.setRemoteDescription(answer)
+})
+
+
+// receive answer
+socket.on("receiveCandidate", (candidate) => {
+    RTC.addIceCandidate(candidate)
+})
+
+
+
+
+
+
+
+
+
+
+
+
+/* 
+    1. RTC connection initialization after media stream ready!
+    2. add media tracks to RTC
+*/
